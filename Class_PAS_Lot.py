@@ -21,20 +21,16 @@ class Lot:
         
         try:
             self.lot_flow_raw = dataengine.extract_lotflow(self.lot_number, self.npi_name, self.lot_title,self.fab_prod,self.ret_prod)
+            self.lot_flow_raw = dataengine.extract_lotflow(self.lot_number, self.npi_name, self.lot_title,self.fab_prod,self.ret_prod)
             # (self, lot, npi, title, fab_prod, ret_prod)
-            self.lot_redwing_raw = dataengine.extract_redwing(self.lot_number)
-            self.lot_flow = self.lotflow_manipulation(self)
+            self.lot_redwing = dataengine.extract_redwing(self.lot_number)
+            self.lot_flow = self.cleanup_LotFlow(self.lot_flow_raw)
         except Exception as e:
             print(f"Error extracting data for lot {self.lot_number}: {e}")
             self.lot_flow = None
             self.lot_redwing = None
             raise
 
-    def check_act(value):
-        if '*' in value:
-            return 1
-        else:
-            return 0
     def get_layer(row):
 
         value = row['OPER_SHORT_DESC']
@@ -44,7 +40,10 @@ class Lot:
         if value[:1] == "Z":
             return "SHIP"
         
-        cond_list = [' ','#','L8c','L8s','L8b','L86','L81','L8d','L8']
+        cond_list = [' ','#',
+                     'L58','L52','L46','L4','L5', #10nm conditions
+                     'L8c','L8s','L8b','L86','L81','L8d','L8' #18A conditions
+                     ] 
 
         for cond in cond_list:
             value = value.replace(cond,'')
@@ -57,34 +56,43 @@ class Lot:
             else:
                 value = 'VA' + value[1]
             
-
-
         return value
     
-    def lotflow_manipulation(self):
-        df = self.lot_flow_raw.copy()
-        
+    def check_act(self, value):
+        if '*' in value:
+            return 1
+        else:
+            return 0
+                
+    def cleanup_LotFlow(self,df):
         df = df.sort_values(by='EXEC_SEQ', ascending=True)
         df['ACTIVITY'] = df['OPER_SHORT_DESC'].apply(lambda x: self.check_act(x))
         df['CUM_ACTIVITY'] = df['ACTIVITY'].cumsum()
 
+
         df = df[(df['EXEC_SEQ']==1) |  
             (df['OPERATION']=='9812') |
-            ((df['AREA']=='LITHO') & ( # This works for P1274/1275
-                (df['MODULE'] == "LI-BE-193") | (df['MODULE'] == "LI-BE-SED") | (df['MODULE'] == "LI-BE-WET") | 
-                (df['MODULE'] == "LI-FE-193") | (df['MODULE'] == "LI-PD-WET") | (df['MODULE'] == "LI-SSAFI-WET") |
-                (df['MODULE'] == "LI-WET") | (df['MODULE'] == "LI-FE-248")
-                )
-            ) |
-            ((df['AREA']=='LITHO') & ( # This is for P1278
-                (df['MODULE'] == "LI-SAVli") | (df['MODULE'] == "LI-SAYli") | (df['MODULE'] == "LI-SBHcu") | 
-                (df['MODULE'] == "LI-SBLcu") | (df['MODULE'] == "LI-SNEli") | (df['MODULE'] == "LI-SNYli")
+            ((df['AREA']=='LITHO') & (
+                # These are the modules for 18A
+                (df['MODULE'] == "LI-SAVli") | 
+                (df['MODULE'] == "LI-SAYli") | 
+                (df['MODULE'] == "LI-SBHcu") | 
+                (df['MODULE'] == "LI-SBLcu") | 
+                (df['MODULE'] == "LI-SNEli") | 
+                (df['MODULE'] == "LI-SNYli") |
+                # These are the modules for 10nm
+                (df['MODULE'] == "LI-BE-193") | 
+                (df['MODULE'] == "LI-BE-SED") | 
+                (df['MODULE'] == "LI-BE-WET") | 
+                (df['MODULE'] == "LI-FE-193") | 
+                (df['MODULE'] == "LI-PD-WET") |
+                (df['MODULE'] == "LI-SSAFI-WET") |
+                (df['MODULE'] == "LI-WET") | 
+                (df['MODULE'] == "LI-FE-248")                
                 )
             )
             ]
-        
+
         df['LAYER'] = df.apply(lambda row: self.get_layer(row), axis=1)
 
-        df['OUT_DATE'] = pd.to_datetime(df['OUT_DATE'], errors='coerce')
-
-        return df
+        df['OUT_DATE'] = pd.to_datetime(df['OUT_DATE'], errors='coerce')        
