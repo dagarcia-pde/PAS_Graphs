@@ -41,7 +41,7 @@ class PASDataEngine:
 
         return df
     
-    def extract_reticleData(self, ret_name):
+    def extract_reticleData(self, fab_prod, ret_name):
         
         with PyUber.connect(datasource= self.imo_source) as conn:
 
@@ -54,6 +54,7 @@ class PASDataEngine:
                 SELECT 
                     z0.commonname AS common_name
                     ,z0.title AS title
+                    ,'{fab_prod}' AS FAB_PROD
                     ,z0.product AS RET_PROD
                     ,z0.rev AS rev
                     ,z0.layer AS layer

@@ -1,7 +1,7 @@
 import pandas as pd
 
 class Lot:
-    def __init__(self, npi_name, lot_number, lot_title, fab_prod, ret_prod, dataengine):
+    def __init__(self, npi_name, lot_number, lot_title, fab_prod, ret_prod, dataengine, debug_flag=False):
         """
         Initialize a Lot instance and extract necessary data.
 
@@ -17,6 +17,7 @@ class Lot:
         self.lot_title = lot_title
         self.fab_prod = fab_prod
         self.ret_prod = ret_prod
+        self.debug_flag = debug_flag
         # self.dataengine = dataengine
         
         try:
@@ -31,7 +32,14 @@ class Lot:
             self.lot_redwing = None
             raise
 
-    def get_layer(row):
+        
+        if self.debug_flag:
+            self.lot_flow_raw.to_csv(f"debug/lot_flow_{lot_number}_raw.csv", index=False)
+            self.lot_flow.to_csv(f"debug/lot_flow_{lot_number}.csv", index=False)
+            self.lot_redwing.to_csv(f"debug/lot_redwing_{lot_number}_raw.csv", index=False)
+    
+
+    def get_layer(self, row):
 
         value = row['OPER_SHORT_DESC']
 
@@ -96,3 +104,5 @@ class Lot:
         df['LAYER'] = df.apply(lambda row: self.get_layer(row), axis=1)
 
         df['OUT_DATE'] = pd.to_datetime(df['OUT_DATE'], errors='coerce')        
+
+        return df
