@@ -1,76 +1,128 @@
-from Class_PAS_Data_Extract import PASDataEngine
-import pandas as pd
-from cryptography.fernet import Fernet
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from matplotlib.lines import Line2D
+import re
 
 class PASPlot:
-    def __init__(self,input_file,email_file,ret_vers_file, key_file, cred_file, debug=False):
-        self.debug = debug
-        self.get_credentials(key_file, cred_file)
-        
-        self.input_file = self.read_excel_file(input_file)
-        self.ret_vers_file = self.read_excel_file(ret_vers_file)
-        self.extractEngine = PASDataEngine()
-
-    def get_reticleData(self):
-        distinct_retProds = self.input_df[['FAB_PROD','RET_PROD']].drop_duplicates()    
-        imo_data = self.extractEngine.extract_reticleData(distinct_retProds)
+    def __init__(self,prod,output_dir):
     
-    def get_lotflowData(self):
-        for index,row in self.input_file.iterrows():
-            product = row['PRODUCT']
-            title = row['TITLE']
-            lot = row['LOT']
-            commit = row['COMMIT']
-            fab_prod = row['FAB_PROD']
-            ret_prod = row['RET_PROD']        
-            
-            print(f'Product = {product}, title = {title}, lot = {lot}, commit = {commit}')
-            
-            self.extractEngine.extract_lotflow(lot=lot,
-                                          npi=product, 
-                                          title=title, 
-                                          fab_prod=fab_prod,
-                                          ret_prod=ret_prod,
-                                          data_source='F32_PROD_XEUS')
-            
-        
+        self.npi_name = prod.npi_name
+        self.output_dir = output_dir
+        self.trend_colors = ["#1E2EB8", "#FF5662", "#00C7FD", "#00377C", "#A0EBFF", "#9C3EF9"]
+        self.bar_colors = ['#001E50',"#1E2EB8", '#FF5662', '#00C7FD', '#A0EBFF']
     
-    def read_excel_file(self,file_path):
-        """
-        Function to read the Excel file and return a pandas DataFrame.
-        """
-        try:
-            df = pd.read_excel(file_path)
-            return df
-        except Exception as e:
-            print("Error reading Excel file:", e)
-            return None
+        self.plotdata = prod.plot_data
+        self.ymin_date = prod.ymin_date
+        self.ymax_date = prod.ymax_date
+        self.ymin_val = prod.ymin_val
+        self.ymax_val = prod.ymax_val
+        self.commit_date = prod.commit
         
-    def get_credentials(self, key_file, credential_file):
-        # Read the key from the key file
-        with open(key_file, 'rb') as file:
-            key = file.read()
-
-        # Initialize the Fernet object with the key
-        cipher = Fernet(key)
-
-        # Read the encrypted credentials from the credential file
-        with open(credential_file, 'rb') as file:
-            encrypted_credentials = file.read()
-
-        # Decrypt the credentials
-        decrypted_credentials = cipher.decrypt(encrypted_credentials).decode()
-
-        # Parse the decrypted credentials
-        credentials = decrypted_credentials.split(',')
-        self.UserName = credentials[0]
-        self.PassWord = credentials[1]      
+        self.lots = []
         
-        pass
+        for n in range(len(prod.lots)):
+            self.lots.append(prod.lots[n].lot_title)
 
-    def display(self):
-        print(f"Name: {self.name}, Value: {self.value}")
+    def sanitize_filename(self, title):
+        """
+        Sanitizes a string to be safe for use as a filename by:
+        - Replacing spaces with underscores
+        - Removing or replacing invalid characters
+        """
+        # Replace spaces with underscores
+        title = title.replace(' ', '_')
+        
+        # Remove or replace invalid characters
+        # The regex below will remove any characters that are not alphanumeric, underscores, or dots
+        title = re.sub(r'[^\w\.]', '', title)
+        
+        return title
+        
+        
+    def make_plot(self):
+        
 
-    def update_value(self, new_value):
-        self.value = new_value
-        print(f"Value updated to: {self.value}")
+        plotdata = self.plotdata
+        ymin_date = self.ymin_date
+        ymax_date = self.ymax_date
+        ymin_val = self.ymin_val
+        ymax_val = self.ymax_val
+        commit_date = self.commit_date
+        trend_date = plotdata['Lead Lot TREND'].max() 
+        
+        print(f"commit_date: {commit_date}")
+        print(f"trend_date: {trend_date}")       
+        
+        fig, ax1 = plt.subplots(figsize=(12, 8))
+
+        ax1.plot(plotdata['LAYER'], plotdata['NPI PLAN'],color='black', label='NPI PLAN', linewidth=2, linestyle='--')
+
+        # ax1.plot(plotdata['LAYER'], plotdata['Lead Lot TREND'],color='blue', label='Lead Lot TREND', linewidth=2, linestyle='--')  
+        for idx, lot in enumerate(self.lots):
+            color = self.trend_colors[idx % len(self.trend_colors)]
+            ax1.plot(plotdata['LAYER'], plotdata[f'{lot} ACTUAL'], color=color, label=f'{lot} ACTUAL', linewidth=2)
+        
+        
+        ax2 = ax1.twinx()
+        # bottom = plotdata['BaseLine']
+
+        # bar_colors = ['grey','blue', 'red', 'green', '#A0EBFF']
+        bar_columns = ['TI', 'TO', 'ESD', 'SHIP']
+
+        # TrendLineColor = "#09FF00FF"
+        TrendLineColor = "#FF0011"
+        if commit_date >= trend_date:
+            TrendLineColor = "#09FF00FF"
+
+        ax1.axhline(y=commit_date, color=TrendLineColor, linestyle='-', linewidth=2)
+
+        plotdata['BOTTOM'] = 0
+        for idx, bar in enumerate(bar_columns):
+
+            ax2.bar(plotdata['LAYER'], plotdata[bar], bottom=plotdata['BOTTOM'], label=bar, color=self.bar_colors[idx], alpha=0.8)
+            plotdata['BOTTOM'] = plotdata[bar] + plotdata['BOTTOM']
+
+
+        for bar,frd in zip(plt.gca().patches,plotdata['FRD']):
+            x = bar.get_x() + bar.get_width() / 2
+            ax2.hlines(frd, x-bar.get_width()/2, x+bar.get_width()/2, color='grey', linewidth=1)
+
+        ax1.set_ylim(ymin_date, ymax_date)
+        ax2.set_ylim(ymin_val, ymax_val)
+        
+        # Set the background color of the axes (the plot area) to white
+        ax1.set_facecolor('white')
+        ax2.set_facecolor('white')
+        fig.patch.set_facecolor('white')
+
+        # Add a text box in the upper left
+        textstr = f'Commit Date: {commit_date.strftime("%m-%d-%Y")}'
+        textstr += f'\nTrend Date: {trend_date.strftime("%m-%d-%Y")}'
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
+        ax1.text(0.05, 0.85, textstr, transform=ax1.transAxes, fontsize=12,
+                    verticalalignment='top', horizontalalignment='left', bbox=props)
+
+
+        ax1.set_xticklabels(plotdata['LAYER'], rotation=90, fontsize=8)
+        ax2.set_yticklabels([])
+        ax1.margins(x=0)
+        ax1.yaxis.grid(True)
+        ax1.yaxis.set_major_locator(mdates.DayLocator(interval=14)) 
+        ax1.yaxis.set_major_formatter(mdates.DateFormatter('%m-%d-%Y'))
+        
+        handles1, labels1 = ax1.get_legend_handles_labels()
+        handles2, labels2 = ax2.get_legend_handles_labels()
+        frd_line = Line2D([0], [0], linestyle='-', color='grey', linewidth=1, label='FRD')
+
+        handles = handles1 + handles2 + [frd_line]
+        labels = labels1 + labels2 + ['FRD']
+        plt.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01,1),borderaxespad=0.)
+        
+        ax1.set_title(f'{self.npi_name} NPI', color='#001E50', fontsize=16)
+        # Show plot
+        plt.tight_layout()
+        
+        filename = self.sanitize_filename(self.npi_name+'_NPI')+'.png'
+        fig.savefig(f'{self.output_dir}{filename}')
+        
+        plt.close(fig)
