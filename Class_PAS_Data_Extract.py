@@ -34,7 +34,8 @@ class PASDataEngine:
                     INNER JOIN F_Operation O ON o.operation=flf.operation AND o.facility = f.facility AND o.latest_version = 'Y'
                 WHERE
                     flf.history_deleted_flag = 'N' 
-                    AND flf.lot = '{lot}' 
+                    AND flf.lot = '{lot}'
+                ORDER BY flf.exec_seq 
             '''
 
             df = pd.read_sql(query, conn)
