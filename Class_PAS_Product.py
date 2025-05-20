@@ -206,7 +206,8 @@ class Product:
         # ymin_days = 0
         # ymin_days = ymax
         
-        
+        self.plot_data_raw = plotdata.copy()
+
         bar_columns = ['TI', 'TO', 'ESD', 'SHIP', 'FRD']        
         
         plotdata['SHIP'] = (plotdata['SHIP'] - plotdata['TO']).dt.days

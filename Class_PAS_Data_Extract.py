@@ -109,8 +109,7 @@ class PASDataEngine:
                 WHERE
                     LS.lot = '{lot}' 
                     AND LS.ADDED_BY <> 'ATC-AUTOLOAD'
-                    AND LS.COMMITOUT is not null  
-            '''
+                    AND LS.COMMITOUT is not null           '''
             df = pd.read_sql(query, conn)
         # cursor.execute(query)
         # self.redwing = df    
