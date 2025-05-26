@@ -3,6 +3,8 @@ import smtplib
 from email.message import EmailMessage
 from email.utils import make_msgid
 from pathlib import Path
+import os
+import re
 
 class EmailUpdate:
     def __init__(self, server, port, email, key_file, credential_file, email_config, plot_folder, subject, debug=False):
@@ -23,7 +25,22 @@ class EmailUpdate:
         self.msg['From'] = self.email
         self.msg['To'] = ', '.join(self.email_addresses)
         self.msg.set_content('This is a plain text body')
-    
+
+    def sanitize_filename(self, title):
+        """
+        Sanitizes a string to be safe for use as a filename by:
+        - Replacing spaces with underscores
+        - Removing or replacing invalid characters
+        """
+        # Replace spaces with underscores
+        title = title.replace(' ', '_')
+        
+        # Remove or replace invalid characters
+        # The regex below will remove any characters that are not alphanumeric, underscores, or dots
+        title = re.sub(r'[^\w\.]', '', title)
+        
+        return title
+
     def getemails(self, email_config):
         email_addresses = email_config['Email'].to_list()
         if self.debug:
@@ -65,11 +82,14 @@ class EmailUpdate:
         image_cid = make_msgid()
         image_cid = image_cid[1:image_cid.find('@')]
 
-        image_path = f"{self.plot_folder}/{npi_name}_NPI.png"
+        filename = self.sanitize_filename(npi_name+'_NPI')+'.png'
+        
+        # Combine them into a full file path
+        full_path = os.path.join(self.plot_folder, filename)        
 
         self.html_body += f"<p style='font-weight: bold; text-decoration: underline; font-size: 16px;'>{npi_name}</p>{self.lookAhead(plot_data)}<img src='cid:{image_cid}'>"
 
-        with open(image_path, 'rb') as img:
+        with open(full_path, 'rb') as img:
             self.msg.add_related(img.read(), 'image','png', cid=image_cid)
 
         

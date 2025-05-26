@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.lines import Line2D
 import re
+import os
 
 class PASPlot:
     def __init__(self,prod,output_dir):
@@ -123,6 +124,10 @@ class PASPlot:
         plt.tight_layout()
         
         filename = self.sanitize_filename(self.npi_name+'_NPI')+'.png'
-        fig.savefig(f'{self.output_dir}{filename}')
+        
+        # Combine them into a full file path
+        full_path = os.path.join(self.output_dir, filename)        
+        
+        fig.savefig(full_path)
         
         plt.close(fig)
