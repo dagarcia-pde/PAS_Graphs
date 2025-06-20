@@ -123,6 +123,8 @@ def main():
 
     if email_flag:
         email.send_email()
+    else:
+        print("Email flag is set to False. No email will be sent.")
 
 if __name__ == "__main__":
 
