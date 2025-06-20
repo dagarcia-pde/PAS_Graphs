@@ -6,6 +6,17 @@ import shutil
 import argparse
 import sys
 
+# gitSyncPath = r'\\azshfs.intel.com\AZAnalysis$\1272_MAODATA\Config\PDE\dagarcia\GitSync'
+# sys.path.append(gitSyncPath)
+
+# import MyGitSync
+
+# repo_url = 'https://github.com/dagarcia-pde/PAS_Graphs.git'
+# code_path = r'\\azshfs.intel.com\AZAnalysis$\1272_MAODATA\Config\PDE\dagarcia\GitSync\PAS_CODE'
+
+# gs = MyGitSync.GitRepository(repo_url, code_path)
+# MyGitSync.clone_and_pull_repo(repo_url, code_path)
+
 code_path = r'\\azshfs.intel.com\AZAnalysis$\1272_MAODATA\Config\PDE\dagarcia\PAS_CODE'
 
 print(f"Adding code path: {code_path}")
