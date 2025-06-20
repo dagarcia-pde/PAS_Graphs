@@ -268,8 +268,11 @@ class Product:
         shipped_data = RetData[RetData['IMO_STATUS'] == 'Shipped'][['FAB_PROD', 'LAYER']].drop_duplicates()
         RetData = RetData[~((RetData['IMO_STATUS'] != 'Shipped') & (RetData['LAYER'].isin(shipped_data['LAYER'])) & (RetData['RET_PROD'].isin(shipped_data['FAB_PROD'])))]
 
+        # Get the lowest date in the IMO_COMMIT column for each layer
+        RetData = RetData.sort_values(by='IMO_COMMIT').drop_duplicates(subset=['LAYER'], keep='first')
+
         # Filter out rows where SHIP is not the earliest for the same LAYER
-        RetData = RetData[~((RetData['SHIPDATE'].isna()) & (RetData['IMO_COMMIT'] < pd.Timestamp.now()))]
+        # RetData = RetData[~((RetData['SHIPDATE'].isna()) & (RetData['IMO_COMMIT'] < pd.Timestamp.now()))]
 
         RetData = pd.pivot_table(RetData,index=['LAYER'], values=['TAPEIN_TREND','ITO_TREND','FAB_REQUIREDDATE','IMO_TREND','SHIPDATE'], aggfunc=np.min).reset_index()
         RetData['TI'] = RetData['TAPEIN_TREND']

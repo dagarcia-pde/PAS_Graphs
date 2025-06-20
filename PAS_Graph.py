@@ -121,17 +121,32 @@ def main():
             
             email.addProduct(product, prod.plot_data_raw)
 
-    email.send_email()
+    if email_flag:
+        email.send_email()
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="PAS Graphs Script")
     parser.add_argument('--config', type=str, help='Path to the config Excel file')
+    parser.add_argument('--email', type=str, help='True/False Flag to send email', default='False')
     args = parser.parse_args()
 
+    global email_Flag
+
+    email_flag = False
+
+    if args.email.lower() == 'true':
+        email_flag = True
+
+    
+
+    global config_file
+
     if args.config:
-        global config_file
         config_file = args.config
+    else:
+        print("No config parameter passed.  Using default config.")
+        config_file = r'\\azshfs.intel.com\AZAnalysis$\1272_MAODATA\Config\PDE\dagarcia\PAS_CONFIG\P1275_Config_DEBUG.xlsx'
 
     print(f"Using config file: {config_file}")
     main()
