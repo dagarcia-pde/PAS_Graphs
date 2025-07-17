@@ -155,7 +155,6 @@ class Lot:
             if pd.isna(plot_data.loc[idx,'TREND']):
                 plot_data.loc[idx,'TREND'] = plot_data.loc[idx-1,'TREND']+pd.Timedelta(days=plot_data.loc[idx,'ACT']/plan_wt_req)
 
-
         self.plot_data = plot_data.drop(columns=['EXEC_SEQ','CUM_ACTIVITY','OUT_DATE'])        
                 
 
@@ -369,13 +368,20 @@ class Product:
 
         bar_columns = ['TI', 'TO', 'ESD', 'SHIP', 'FRD']        
         
-        plotdata['SHIP'] = (plotdata['SHIP'] - plotdata['TO']).dt.days
-        plotdata['ESD'] = (plotdata['ESD'] - plotdata['TO']).dt.days
-        plotdata['TO'] = (plotdata['TO'] - plotdata['TI']).dt.days
-        
-        
-        plotdata['FRD'] = (plotdata['FRD'] - ymin_date).dt.days
+
         plotdata['TI'] = (plotdata['TI'] - ymin_date).dt.days
+        plotdata['TO'] = (plotdata['TO'] - ymin_date).dt.days
+        plotdata['FRD'] = (plotdata['FRD'] - ymin_date).dt.days
+        plotdata['ESD'] = (plotdata['ESD'] - ymin_date).dt.days
+        plotdata['SHIP'] = (plotdata['SHIP'] - ymin_date).dt.days
+
+        # plotdata['SHIP'] = (plotdata['SHIP'] - plotdata['TO']).dt.days
+        # plotdata['ESD'] = (plotdata['ESD'] - plotdata['TO']).dt.days
+        # plotdata['TO'] = (plotdata['TO'] - plotdata['TI']).dt.days
+        
+        
+        # plotdata['FRD'] = (plotdata['FRD'] - ymin_date).dt.days
+        # plotdata['TI'] = (plotdata['TI'] - ymin_date).dt.days
         
         for col in bar_columns:
             plotdata[col] = plotdata[col].fillna(0)
