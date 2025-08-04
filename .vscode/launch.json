@@ -11,7 +11,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--config",  "\\\\azshfs.intel.com\\AZAnalysis$\\1272_MAODATA\\Config\\PDE\\dagarcia\\PAS_CONFIG\\P1278_Config.xlsx",
+            "args": ["--config",  "\\\\azshfs.intel.com\\AZAnalysis$\\1272_MAODATA\\Config\\PDE\\dagarcia\\PAS_CONFIG\\P1275_Config.xlsx",
                      "--email", "False"],
         }
     ]

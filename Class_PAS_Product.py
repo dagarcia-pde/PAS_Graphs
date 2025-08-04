@@ -27,7 +27,7 @@ class Lot:
         
         try:
             self.lot_flow_raw = dataengine.extract_lotflow(self.lot_number, self.npi_name, self.lot_title,self.fab_prod,self.ret_prod)
-            self.lot_flow_raw = dataengine.extract_lotflow(self.lot_number, self.npi_name, self.lot_title,self.fab_prod,self.ret_prod)
+            # self.lot_flow_raw = dataengine.extract_lotflow(self.lot_number, self.npi_name, self.lot_title,self.fab_prod,self.ret_prod)
             # self.lot_flow_raw.to_csv(f"debug/lot_flow_{lot_number}_raw.csv", index=False)
             # (self, lot, npi, title, fab_prod, ret_prod)
             self.lot_redwing = dataengine.extract_redwing(self.lot_number)
@@ -57,7 +57,7 @@ class Lot:
         
         cond_list = [' ','#',
                      'L58','L5B','L52','L46','L4H','L4','L5', #10nm conditions
-                     'L8c','L8s','L8b','L86','L81','L8d','L8' #18A conditions
+                     'L8xr','L8c','L8s','L8b','L86','L81','L8d','L8' #18A conditions
                      ] 
 
         for cond in cond_list:
@@ -230,7 +230,8 @@ class Product:
         """
         Uses the reticle data version input to overide and select specific reticles to use in tracking
         """
-        df['VER'] = df['RET_PROD'].str[:3]
+        # df['VER'] = df['RET_PROD'].str[:3]
+        df['VER'] = df['TITLE'].str[:3]
         merged_data = df.merge(self.ret_version, how='left', on=['RET_PROD', 'LAYER'])
         df = merged_data[(merged_data['VER'] == merged_data['VERSION']) | merged_data['VERSION'].isna()]
         df.drop(columns=['VER','VERSION'], inplace=True)
@@ -370,10 +371,15 @@ class Product:
         
 
         plotdata['TI'] = (plotdata['TI'] - ymin_date).dt.days
-        plotdata['TO'] = (plotdata['TO'] - ymin_date).dt.days
+
+        plotdata['TI'] = plotdata['TI'].fillna(0)
+        plotdata['TI'] = plotdata['TI'].apply(lambda x: max(x, 0))        
+        
+        plotdata['TO'] = (plotdata['TO'] - ymin_date).dt.days  - plotdata['TI']
         plotdata['FRD'] = (plotdata['FRD'] - ymin_date).dt.days
-        plotdata['ESD'] = (plotdata['ESD'] - ymin_date).dt.days
-        plotdata['SHIP'] = (plotdata['SHIP'] - ymin_date).dt.days
+        plotdata['ESD'] = (plotdata['ESD'] - ymin_date).dt.days  - plotdata['TI']
+        plotdata['SHIP'] = (plotdata['SHIP'] - ymin_date).dt.days - plotdata['TI']
+
 
         # plotdata['SHIP'] = (plotdata['SHIP'] - plotdata['TO']).dt.days
         # plotdata['ESD'] = (plotdata['ESD'] - plotdata['TO']).dt.days
@@ -389,6 +395,7 @@ class Product:
             plotdata[col] = plotdata[col].apply(lambda x: max(x, 0))
         # for col in bar_columns:
         #     plotdata[col] = self.convert_to_days(plotdata[col],ymin_date)
+
 
         self.plot_data = plotdata.copy()
         self.ymin_date = ymin_date
