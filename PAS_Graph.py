@@ -73,7 +73,7 @@ def read_excel_to_dataframe(file_path, sheet_name, halt_on_error=True):
             print(f"Error reading {file_path}, sheet {sheet_name}: {e}. Returning None.")
             return None
 
-def main():
+def main(debug_flag=False):
 
     # Entry point for the script
     if os.path.exists(plotPaths):
@@ -107,7 +107,7 @@ def main():
         email_config=email_config,
         plot_folder=plotPaths,
         subject=f"NPI PAS Update - {tech}",
-        debug=False)
+        debug=debug_flag)
 
     if  pas_config is not None:
         unique_combos = pas_config.groupby(['PRODUCT', 'FAB_PROD', 'RET_PROD'])['COMMIT'].max().reset_index()
@@ -118,7 +118,7 @@ def main():
             print(f"Processing Product: {product}")
             print(f"    FAB_PROD: {details['FAB_PROD']}, RET_PROD: {details['RET_PROD']}, COMMIT: {details['COMMIT']}")
             
-            prod = Class_PAS_Product.Product(product, products[product],  dataengine, ret_version=reticle_config, lots=None, debug_flag=False)
+            prod = Class_PAS_Product.Product(product, products[product],  dataengine, ret_version=reticle_config, lots=None, debug_flag=debug_flag)
             
             currentProd = pas_config[pas_config['PRODUCT']==product]
             for idx, row in currentProd.iterrows():
@@ -142,6 +142,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PAS Graphs Script")
     parser.add_argument('--config', type=str, help='Path to the config Excel file')
     parser.add_argument('--email', type=str, help='True/False Flag to send email', default='False')
+    parser.add_argument('--debug', type=str, help='True/False Flag to enable debug output', default='False')
     args = parser.parse_args()
 
     global email_Flag
@@ -151,7 +152,11 @@ if __name__ == "__main__":
     if args.email.lower() == 'true':
         email_flag = True
 
-    
+    debug_flag = False
+
+    if args.debug.lower() == 'true':
+        debug_flag = True
+        print("Debug mode is enabled.")    
 
     global config_file
 
@@ -162,5 +167,5 @@ if __name__ == "__main__":
         config_file = r'\\azshfs.intel.com\AZAnalysis$\1272_MAODATA\Config\PDE\dagarcia\PAS_CONFIG\P1275_Config_DEBUG.xlsx'
 
     print(f"Using config file: {config_file}")
-    main()
+    main(debug_flag=debug_flag)
     # main()

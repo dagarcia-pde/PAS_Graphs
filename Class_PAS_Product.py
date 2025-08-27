@@ -114,6 +114,9 @@ class Lot:
 
         # df.loc['0', 'OUT_DATE'] = df.loc[1,'OUT_DATE']
 
+        df = df.sort_values(by='OUT_DATE')
+        df = df.drop_duplicates(subset=['LAYER'], keep='last')
+
         return df
     
     def generate_plot_data(self):
