@@ -110,8 +110,15 @@ def main(debug_flag=False):
         debug=debug_flag)
 
     if  pas_config is not None:
-        unique_combos = pas_config.groupby(['PRODUCT', 'FAB_PROD', 'RET_PROD', 'Technology'])['COMMIT'].min().reset_index()
+        
+        pas_config2 = pas_config.copy()
 
+        pas_config2.loc[pas_config2['TITLE'].str.upper() != 'LEAD LOT', 'COMMIT'] = None
+
+        unique_combos = pas_config2.groupby(['PRODUCT', 'FAB_PROD', 'RET_PROD', 'Technology'])['COMMIT'].min().reset_index()        
+        # unique_combos = pas_config.groupby(['PRODUCT', 'FAB_PROD', 'RET_PROD', 'Technology'])['COMMIT'].min().reset_index()
+        
+        
         products = unique_combos.set_index('PRODUCT').to_dict(orient='index')
         
         for product, details in products.items():

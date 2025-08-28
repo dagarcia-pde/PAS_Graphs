@@ -332,14 +332,14 @@ class Product:
         wt = cum_act / process_days
         wipt_sql = cum_act / cum_cycle_time
         wipt_ratio = wipt_sql / wt
-        # print("Cumulative Activity:", cum_act)
-        # print("Process Days:", process_days)
-        # print("WIP Turns required:", wt)
-        # print("Cumulative Cycle Time (hours):", cum_cycle_time)
-        # print("WIP Turns (SQL):", wipt_sql)
-        # print("WIP Turns Ratio:", wipt_ratio)
-        # print("Commit Date:", self.commit)
-        # print("Start Date:", start_date)
+        print("Cumulative Activity:", cum_act)
+        print("Process Days:", process_days)
+        print("WIP Turns required:", wt)
+        print("Cumulative Cycle Time (hours):", cum_cycle_time)
+        print("WIP Turns (SQL):", wipt_sql)
+        print("WIP Turns Ratio:", wipt_ratio)
+        print("Commit Date:", self.commit)
+        print("Start Date:", start_date)
 
         df['CT_for_commit'] = df['CUM_CYCLE_TIME']*wipt_ratio
         df.loc[0, 'CT_for_commit'] = 0
@@ -372,33 +372,33 @@ class Product:
 
         timeDelta = min_line-min_TI
 
-        print(f"Max Line: {max_line}, Min Line: {min_line}, Min TI: {min_TI}, Time Delta: {timeDelta}\n")
+        # print(f"Max Line: {max_line}, Min Line: {min_line}, Min TI: {min_TI}, Time Delta: {timeDelta}\n")
 
         # Normalize dates to round down to the nearest day
         ymin_date = (min_line - pd.Timedelta(days=30)).normalize()
         ymax_date = (max_line + pd.Timedelta(days=7)).normalize()
 
-        print(f"Y Min Date: {ymin_date}, Y Max Date: {ymax_date}\n")
+        # print(f"Y Min Date: {ymin_date}, Y Max Date: {ymax_date}\n")
 
         # Calculate the difference in days
         difference_days = (ymax_date - ymin_date).days
-        print(f"Difference in days: {difference_days} days\n")
+        # print(f"Difference in days: {difference_days} days\n")
 
         # Round up the difference to the nearest multiple of 7
         rounded_difference = np.ceil(difference_days / 7) * 7
-        print(f"Rounded difference: {rounded_difference} days\n")
+        # print(f"Rounded difference: {rounded_difference} days\n")
 
         ymax_date = ymin_date + pd.Timedelta(days=rounded_difference)
         ymin_val = 0
         ymax_val = rounded_difference
 
-        print(f"Final Y Min Date: {ymin_date}, Final Y Max Date: {ymax_date}\n")
+        # print(f"Final Y Min Date: {ymin_date}, Final Y Max Date: {ymax_date}\n")
 
 
-        print(f"ymin_date: {ymin_date}")
-        print(f'ymin_val: {ymin_val}')
-        print(f"ymax_date: {ymax_date}")
-        print(f'ymax_val: {ymax_val}')
+        # print(f"ymin_date: {ymin_date}")
+        # print(f'ymin_val: {ymin_val}')
+        # print(f"ymax_date: {ymax_date}")
+        # print(f'ymax_val: {ymax_val}')
 
         bar_columns = ['TI', 'TO', 'ESD', 'SHIP', 'FRD']    
         plotdata['TI'] = (plotdata['TI'] - ymin_date).dt.days

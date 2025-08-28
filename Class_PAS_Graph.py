@@ -51,8 +51,8 @@ class PASPlot:
         commit_date = self.commit_date
         trend_date = plotdata['PLAN'].max() 
         
-        print(f"commit_date: {commit_date}")
-        print(f"trend_date: {trend_date}")       
+        # print(f"commit_date: {commit_date}")
+        # print(f"trend_date: {trend_date}")       
         
         fig, ax1 = plt.subplots(figsize=(12, 8))
 
