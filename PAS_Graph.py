@@ -110,7 +110,7 @@ def main(debug_flag=False):
         debug=debug_flag)
 
     if  pas_config is not None:
-        unique_combos = pas_config.groupby(['PRODUCT', 'FAB_PROD', 'RET_PROD'])['COMMIT'].max().reset_index()
+        unique_combos = pas_config.groupby(['PRODUCT', 'FAB_PROD', 'RET_PROD', 'Technology'])['COMMIT'].min().reset_index()
 
         products = unique_combos.set_index('PRODUCT').to_dict(orient='index')
         
@@ -118,7 +118,12 @@ def main(debug_flag=False):
             print(f"Processing Product: {product}")
             print(f"    FAB_PROD: {details['FAB_PROD']}, RET_PROD: {details['RET_PROD']}, COMMIT: {details['COMMIT']}")
             
-            prod = Class_PAS_Product.Product(product, products[product],  dataengine, ret_version=reticle_config, lots=None, debug_flag=debug_flag)
+            prod = Class_PAS_Product.Product(npi_name=product, 
+                                             prod_details=products[product],
+                                             dataengine=dataengine,
+                                             ret_version=reticle_config,
+                                             lots=None, 
+                                             debug_flag=debug_flag)
             
             currentProd = pas_config[pas_config['PRODUCT']==product]
             for idx, row in currentProd.iterrows():
@@ -130,7 +135,7 @@ def main(debug_flag=False):
             myGraph = Class_PAS_Graph.PASPlot(prod,plotPaths)
             myGraph.make_plot()        
             
-            email.addProduct(product, prod.plot_data_raw)
+            email.addProduct(product, prod.plot_data)
 
     if email_flag:
         email.send_email()

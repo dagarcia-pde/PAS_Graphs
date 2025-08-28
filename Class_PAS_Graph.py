@@ -49,14 +49,14 @@ class PASPlot:
         ymin_val = self.ymin_val
         ymax_val = self.ymax_val
         commit_date = self.commit_date
-        trend_date = plotdata['Lead Lot TREND'].max() 
+        trend_date = plotdata['PLAN'].max() 
         
         print(f"commit_date: {commit_date}")
         print(f"trend_date: {trend_date}")       
         
         fig, ax1 = plt.subplots(figsize=(12, 8))
 
-        ax1.plot(plotdata['LAYER'], plotdata['NPI PLAN'],color='black', label='NPI PLAN', linewidth=2, linestyle='--')
+        ax1.plot(plotdata['LAYER'], plotdata['PLAN'],color='black', label='NPI PLAN', linewidth=2, linestyle='--')
 
         # ax1.plot(plotdata['LAYER'], plotdata['Lead Lot TREND'],color='blue', label='Lead Lot TREND', linewidth=2, linestyle='--')  
         for idx, lot in enumerate(self.lots):
@@ -65,9 +65,7 @@ class PASPlot:
         
         
         ax2 = ax1.twinx()
-        # bottom = plotdata['BaseLine']
 
-        # bar_colors = ['grey','blue', 'red', 'green', '#A0EBFF']
         bar_columns = ['TI', 'TO', 'ESD', 'SHIP']
 
         # TrendLineColor = "#09FF00FF"

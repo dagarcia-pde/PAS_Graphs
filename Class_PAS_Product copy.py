@@ -4,83 +4,8 @@ import pandas as pd
 import numpy as np
 # from PAS_Graph_Class import PASPlot
 
-
-def get_layer(row):
-
-    value = row['OPER_SHORT_DESC']
-
-    if row['EXEC_SEQ'] == 1:
-        return "START"
-    if value[:1] == "Z":
-        return "SHIP"
-    
-    cond_list = [' ','#',
-                    'L58','L5B','L52','L46','L4H','L4','L5', #10nm conditions
-                    'L8xr','L8c','L8s','L8b','L86','L81','L8d','L8' #18A conditions
-                    ] 
-
-    for cond in cond_list:
-        value = value.replace(cond,'')
-        
-    value = value[:3]
-
-    if row['OPER_LONG_DESC'].find(value) == -1:
-        if value[0]=='M':
-            value = 'MT' + value[1]
-        else:
-            value = 'VA' + value[1]
-        
-    return value
-
-def check_act(value):
-    if '*' in value:
-        return 1
-    else:
-        return 0
-            
-def cleanup_LotFlow(df):
-    # df = df.sort_values(by='EXEC_SEQ', ascending=True)
-    # df['ACTIVITY'] = df['OPER_SHORT_DESC'].apply(lambda x: check_act(x))
-    # df['CUM_ACTIVITY'] = df['ACTIVITY'].cumsum()
-
-
-    df = df[(df['EXEC_SEQ']==1) |  
-        (df['OPERATION']=='9812') |
-        ((df['AREA']=='LITHO') & (
-            # These are the modules for 18A
-            (df['MODULE'] == "LI-SAVli") | 
-            (df['MODULE'] == "LI-SAYli") | 
-            (df['MODULE'] == "LI-SBHcu") | 
-            (df['MODULE'] == "LI-SBLcu") | 
-            (df['MODULE'] == "LI-SNEli") | 
-            (df['MODULE'] == "LI-SNYli") |
-            # These are the modules for 10nm
-            (df['MODULE'] == "LI-BE-193") | 
-            (df['MODULE'] == "LI-BE-SED") | 
-            (df['MODULE'] == "LI-BE-WET") | 
-            (df['MODULE'] == "LI-FE-193") | 
-            (df['MODULE'] == "LI-PD-WET") |
-            (df['MODULE'] == "LI-SSAFI-WET") |
-            (df['MODULE'] == "LI-WET") | 
-            (df['MODULE'] == "LI-FE-248")                
-            )
-        )
-        ]
-
-    df['LAYER'] = df.apply(lambda row: get_layer(row), axis=1)
-
-    df['OUT_DATE'] = pd.to_datetime(df['OUT_DATE'], errors='coerce')     
-
-    # df.loc['0', 'OUT_DATE'] = df.loc[1,'OUT_DATE']
-
-    # df = df.sort_values(by='OUT_DATE')
-    df = df.drop_duplicates(subset=['LAYER'], keep='last')
-
-    return df
-
-
 class Lot:
-    def __init__(self, npi_name, lot_number, lot_title, fab_prod, ret_prod, commit, base_flow, dataengine, debug_flag=False):
+    def __init__(self, npi_name, lot_number, lot_title, fab_prod, ret_prod, commit, dataengine, debug_flag=False):
         """
         Initialize a Lot instance and extract necessary data.
 
@@ -98,20 +23,16 @@ class Lot:
         self.ret_prod = ret_prod
         self.commit = commit
         self.debug_flag = debug_flag
-    
         # self.dataengine = dataengine
         
         try:
             self.lot_flow_raw = dataengine.extract_lotflow(self.lot_number, self.npi_name, self.lot_title,self.fab_prod,self.ret_prod)
-            
+            # self.lot_flow_raw = dataengine.extract_lotflow(self.lot_number, self.npi_name, self.lot_title,self.fab_prod,self.ret_prod)
+            # self.lot_flow_raw.to_csv(f"debug/lot_flow_{lot_number}_raw.csv", index=False)
+            # (self, lot, npi, title, fab_prod, ret_prod)
             self.lot_redwing = dataengine.extract_redwing(self.lot_number)
-            # self.lot_flow = cleanup_LotFlow(self.lot_flow_raw)
-            self.lot_flow = pd.merge(base_flow, self.lot_flow_raw, on='OPERATION', how='inner')
-            self.lot_flow['OUT_DATE'] = pd.to_datetime(self.lot_flow['OUT_DATE'], errors='coerce')     
-
-            self.lot_flow = self.lot_flow.sort_values(by='OUT_DATE')
-            self.lot_flow = self.lot_flow.drop_duplicates(subset=['LAYER'], keep='last')
-            # self.generate_plot_data()
+            self.lot_flow = self.cleanup_LotFlow(self.lot_flow_raw)
+            self.generate_plot_data()
         except Exception as e:
             print(f"Error extracting data for lot {self.lot_number}: {e}")
             self.lot_flow = None
@@ -121,11 +42,82 @@ class Lot:
         
         if self.debug_flag:
             self.lot_flow_raw.to_csv(f"debug/lot_flow_{lot_number}_raw.csv", index=False)
-            # self.lot_flow.to_csv(f"debug/lot_flow_{lot_number}.csv", index=False)
-            # self.lot_redwing.to_csv(f"debug/lot_redwing_{lot_number}_raw.csv", index=False)
+            self.lot_flow.to_csv(f"debug/lot_flow_{lot_number}.csv", index=False)
+            self.lot_redwing.to_csv(f"debug/lot_redwing_{lot_number}_raw.csv", index=False)
     
 
+    def get_layer(self, row):
 
+        value = row['OPER_SHORT_DESC']
+
+        if row['EXEC_SEQ'] == 1:
+            return "START"
+        if value[:1] == "Z":
+            return "SHIP"
+        
+        cond_list = [' ','#',
+                     'L58','L5B','L52','L46','L4H','L4','L5', #10nm conditions
+                     'L8xr','L8c','L8s','L8b','L86','L81','L8d','L8' #18A conditions
+                     ] 
+
+        for cond in cond_list:
+            value = value.replace(cond,'')
+            
+        value = value[:3]
+
+        if row['OPER_LONG_DESC'].find(value) == -1:
+            if value[0]=='M':
+                value = 'MT' + value[1]
+            else:
+                value = 'VA' + value[1]
+            
+        return value
+    
+    def check_act(self, value):
+        if '*' in value:
+            return 1
+        else:
+            return 0
+                
+    def cleanup_LotFlow(self,df):
+        df = df.sort_values(by='EXEC_SEQ', ascending=True)
+        df['ACTIVITY'] = df['OPER_SHORT_DESC'].apply(lambda x: self.check_act(x))
+        df['CUM_ACTIVITY'] = df['ACTIVITY'].cumsum()
+
+
+        df = df[(df['EXEC_SEQ']==1) |  
+            (df['OPERATION']=='9812') |
+            ((df['AREA']=='LITHO') & (
+                # These are the modules for 18A
+                (df['MODULE'] == "LI-SAVli") | 
+                (df['MODULE'] == "LI-SAYli") | 
+                (df['MODULE'] == "LI-SBHcu") | 
+                (df['MODULE'] == "LI-SBLcu") | 
+                (df['MODULE'] == "LI-SNEli") | 
+                (df['MODULE'] == "LI-SNYli") |
+                # These are the modules for 10nm
+                (df['MODULE'] == "LI-BE-193") | 
+                (df['MODULE'] == "LI-BE-SED") | 
+                (df['MODULE'] == "LI-BE-WET") | 
+                (df['MODULE'] == "LI-FE-193") | 
+                (df['MODULE'] == "LI-PD-WET") |
+                (df['MODULE'] == "LI-SSAFI-WET") |
+                (df['MODULE'] == "LI-WET") | 
+                (df['MODULE'] == "LI-FE-248")                
+                )
+            )
+            ]
+
+        df['LAYER'] = df.apply(lambda row: self.get_layer(row), axis=1)
+
+        df['OUT_DATE'] = pd.to_datetime(df['OUT_DATE'], errors='coerce')     
+
+        # df.loc['0', 'OUT_DATE'] = df.loc[1,'OUT_DATE']
+
+        df = df.sort_values(by='OUT_DATE')
+        df = df.drop_duplicates(subset=['LAYER'], keep='last')
+
+        return df
     
     def generate_plot_data(self):
 
@@ -192,7 +184,7 @@ class Product:
         self.reticle_data = self.dataengine.extract_reticleData(self.fab_name, self.ret_name)
         if self.debug_flag: self.reticle_data.to_csv(f"debug/{self.fab_name}_reticle_data_raw.csv", index=False)
         self.RetData = self.reticle_manipulation()
-        
+        # self.RetPlotData = self.generate_ret_plot_data()
         if self.debug_flag: self.RetData.to_csv(f"debug/{self.fab_name}_reticle_data.csv", index=False)
 
 
@@ -207,22 +199,11 @@ class Product:
         if len(self.lots) == 0:
                 # def extract_BaseFlow(self, lot, npi, fab_prod, ret_prod,process=1278):
             df = self.dataengine.extract_BaseFlow(lot=lot_number, npi=self.npi_name, fab_prod=self.fab_name, ret_prod=self.ret_name, process=self.technology)
-
-            self.plan_flow = self.baseline_flow(df)
-            self.base_flow = self.plan_flow[['ORDER','OPERATION','LAYER']]
+            self.base_flow = self.baseline_flow2(df)
             # self.RetPlotData = self.RetDataOrder()
-            self.RetPlotData = pd.merge(self.base_flow[['ORDER','LAYER']], self.RetData, how='left', on=['LAYER'])
 
 
-        lot = Lot(npi_name=self.npi_name, 
-                  lot_number=lot_number, 
-                  lot_title=lot_title, 
-                  fab_prod=self.fab_name, 
-                  ret_prod=self.ret_name, 
-                  commit=self.commit, 
-                  base_flow=self.base_flow, 
-                  dataengine=self.dataengine, 
-                  debug_flag=self.debug_flag)
+        lot = Lot(self.npi_name, lot_number, lot_title, self.fab_name, self.ret_name, self.commit, self.dataengine, self.debug_flag)
         self.lots.append(lot)
 
 
@@ -317,13 +298,24 @@ class Product:
 
         return RetData     
     
+    def baseline_flow(self,lot_flow):
+        self.days_remaining = (self.commit - pd.Timestamp.now()).days
 
-    def baseline_flow(self, lot_flow):
+        order_flow = lot_flow.pivot_table(index=['NPI','FAB_PROD','LAYER'],values=['EXEC_SEQ','CUM_ACTIVITY'],aggfunc='min')
+        order_flow = order_flow.sort_values(by='EXEC_SEQ', ascending=True).reset_index()
+
+        self.total_act = order_flow['CUM_ACTIVITY'].max()
+
+        order_flow['ACT'] = order_flow['CUM_ACTIVITY'].diff()
+
+        return order_flow
+
+    def baseline_flow2(self, lot_flow):
         df = lot_flow.copy()
         
-        df = cleanup_LotFlow(df)
+        df = self.cleanup_LotFlow(df)
         df = df.reset_index(drop=True)
-        df['ORDER'] = df.index+1
+        df['RET_ORDER'] = df.index
 
         cum_act = df['CUM_ACTIVITY'].max()
         start_date = df['OUT_DATE'].min()
@@ -332,14 +324,14 @@ class Product:
         wt = cum_act / process_days
         wipt_sql = cum_act / cum_cycle_time
         wipt_ratio = wipt_sql / wt
-        # print("Cumulative Activity:", cum_act)
-        # print("Process Days:", process_days)
-        # print("WIP Turns required:", wt)
-        # print("Cumulative Cycle Time (hours):", cum_cycle_time)
-        # print("WIP Turns (SQL):", wipt_sql)
-        # print("WIP Turns Ratio:", wipt_ratio)
-        # print("Commit Date:", self.commit)
-        # print("Start Date:", start_date)
+        print("Cumulative Activity:", cum_act)
+        print("Process Days:", process_days)
+        print("WIP Turns required:", wt)
+        print("Cumulative Cycle Time (hours):", cum_cycle_time)
+        print("WIP Turns (SQL):", wipt_sql)
+        print("WIP Turns Ratio:", wipt_ratio)
+        print("Commit Date:", self.commit)
+        print("Start Date:", start_date)
 
         df['CT_for_commit'] = df['CUM_CYCLE_TIME']*wipt_ratio
         df.loc[0, 'CT_for_commit'] = 0
@@ -347,81 +339,111 @@ class Product:
 
         df['PLAN'] = start_date + pd.to_timedelta(df['CT_for_commit'], unit='h')
 
-        df = df[['ORDER','OPERATION','LAYER','PLAN']]
+        df = df[['RET_ORDER','LAYER','PLAN']]
 
         return df
 
     def build_plot_data(self):
         base_flow = self.base_flow.copy()
         ReticleData = self.RetData.copy()
+        plotdata = pd.merge(base_flow[['LAYER','EXEC_SEQ']], ReticleData, how='left', on=['LAYER'])
 
-        plotdata = pd.merge(self.RetPlotData, self.plan_flow[['ORDER','LAYER','PLAN']], on=['ORDER','LAYER'], how='left')
+        # plotdata['TI'] = plotdata['TI'].fillna(plotdata['TI'].min())
+
+
+        # for col in columns_to_fill:
+        #     plotdata[col] = plotdata[col].fillna(0)  # Fill NaN with 0
+        #     plotdata[col] = pd.to_timedelta(plotdata[col], unit='D')  # Convert to Timedelta
+
+
+
+        for n in range(len(self.lots)):
+            lot_plot_data = self.lots[n].plot_data.copy()
+            lot_title = self.lots[n].lot_title
+            
+            lot_plot_data['NPI PLAN'] = lot_plot_data['PLAN']
+            lot_plot_data[f'{lot_title} TREND'] = lot_plot_data['TREND']
+            lot_plot_data[f'{lot_title} ACTUAL'] = lot_plot_data['ACTUAL']
+
+            lot_plot_data = lot_plot_data[['LAYER', 'NPI PLAN', f'{lot_title} TREND', f'{lot_title} ACTUAL']]
+
+            if n > 0:
+                lot_plot_data = lot_plot_data[['LAYER', f'{lot_title} TREND', f'{lot_title} ACTUAL']]
+                
+
+            plotdata = pd.merge(plotdata, lot_plot_data, how='left', on=['LAYER'])
         
-        # plotdata = pd.merge(base_flow[['LAYER','EXEC_SEQ']], ReticleData, how='left', on=['LAYER'])
+        trend_columns = [col for col in plotdata.columns if col.endswith('TREND')]
+        trend_columns
+        max_line = max(plotdata[trend_columns].max())
+        min_line = min(plotdata[trend_columns].min())
 
-        for lot in self.lots:
-            lot_plot_data = lot.lot_flow
-            lot_title = lot.lot_title
-            lot_plot_data[f'{lot_title} ACTUAL'] = lot_plot_data['OUT_DATE']
-
-            plotdata = pd.merge(plotdata, lot_plot_data[['ORDER', f'{lot_title} ACTUAL']], on='ORDER', how='left')
-
-        max_line = plotdata['PLAN'].max()
-        min_line = plotdata['PLAN'].min()
         min_TI = plotdata['TI'].min()
 
-        timeDelta = min_line-min_TI
-
-        print(f"Max Line: {max_line}, Min Line: {min_line}, Min TI: {min_TI}, Time Delta: {timeDelta}\n")
+        timeDelta = min_line - min_TI
 
         # Normalize dates to round down to the nearest day
         ymin_date = (min_line - pd.Timedelta(days=30)).normalize()
         ymax_date = (max_line + pd.Timedelta(days=7)).normalize()
 
-        print(f"Y Min Date: {ymin_date}, Y Max Date: {ymax_date}\n")
-
         # Calculate the difference in days
         difference_days = (ymax_date - ymin_date).days
-        print(f"Difference in days: {difference_days} days\n")
+        print(f"Difference in days: {difference_days} days")
 
         # Round up the difference to the nearest multiple of 7
         rounded_difference = np.ceil(difference_days / 7) * 7
-        print(f"Rounded difference: {rounded_difference} days\n")
+        print(f"Rounded difference: {rounded_difference} days")
 
         ymax_date = ymin_date + pd.Timedelta(days=rounded_difference)
         ymin_val = 0
         ymax_val = rounded_difference
-
-        print(f"Final Y Min Date: {ymin_date}, Final Y Max Date: {ymax_date}\n")
 
 
         print(f"ymin_date: {ymin_date}")
         print(f'ymin_val: {ymin_val}')
         print(f"ymax_date: {ymax_date}")
         print(f'ymax_val: {ymax_val}')
+        # ymin_days = 0
+        # ymin_days = ymax
+        
+        self.plot_data_raw = plotdata.copy()
 
-        bar_columns = ['TI', 'TO', 'ESD', 'SHIP', 'FRD']    
+        bar_columns = ['TI', 'TO', 'ESD', 'SHIP', 'FRD']        
+        
+
         plotdata['TI'] = (plotdata['TI'] - ymin_date).dt.days
 
         plotdata['TI'] = plotdata['TI'].fillna(0)
         plotdata['TI'] = plotdata['TI'].apply(lambda x: max(x, 0))        
-
+        
         plotdata['TO'] = (plotdata['TO'] - ymin_date).dt.days  - plotdata['TI']
         plotdata['FRD'] = (plotdata['FRD'] - ymin_date).dt.days
         plotdata['ESD'] = (plotdata['ESD'] - ymin_date).dt.days  - plotdata['TI']
         plotdata['SHIP'] = (plotdata['SHIP'] - ymin_date).dt.days - plotdata['TI']
 
+
+        # plotdata['SHIP'] = (plotdata['SHIP'] - plotdata['TO']).dt.days
+        # plotdata['ESD'] = (plotdata['ESD'] - plotdata['TO']).dt.days
+        # plotdata['TO'] = (plotdata['TO'] - plotdata['TI']).dt.days
+        
+        
+        # plotdata['FRD'] = (plotdata['FRD'] - ymin_date).dt.days
+        # plotdata['TI'] = (plotdata['TI'] - ymin_date).dt.days
+        
         for col in bar_columns:
             plotdata[col] = plotdata[col].fillna(0)
             
             plotdata[col] = plotdata[col].apply(lambda x: max(x, 0))
+        # for col in bar_columns:
+        #     plotdata[col] = self.convert_to_days(plotdata[col],ymin_date)
+
 
         self.plot_data = plotdata.copy()
         self.ymin_date = ymin_date
         self.ymax_date = ymax_date
         self.ymin_val = ymin_val
         self.ymax_val = ymax_val
-        
+
 
     def debug_dump(self):
         """

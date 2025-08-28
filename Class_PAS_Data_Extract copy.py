@@ -66,15 +66,29 @@ class PASDataEngine:
         with PyUber.connect(datasource=self.xeus_source) as conn:
         
             query = f'''
-                SELECT DISTINCT
-                        flf.lot AS LOT
-                        ,flf.operation AS OPERATION
-                        ,To_Char(flf.out_date,'yyyy-mm-dd hh24:mi:ss') AS OUT_DATE
+                SELECT 
+                        '{npi}' AS NPI
+                        ,'{title}' AS TITLE
+                        ,'{fab_prod}' AS FAB_PROD
+                        ,'{ret_prod}' AS RET_PROD
+                        ,flf.product AS product
+                        ,flf.lot AS lot
+                        ,flf.exec_seq AS exec_seq
+                        ,flf.operation AS operation
+                        ,flf.oper_short_desc AS oper_short_desc
+                        ,o.oper_long_desc AS oper_long_desc
+                        ,To_Char(flf.out_date,'yyyy-mm-dd hh24:mi:ss') AS out_date
+                        ,flf.lot_priority_movein AS lot_priority_movein
+                        ,o.area AS area
+                        ,o.module AS module
                 FROM 
                     F_Lot_Flow flf
+                    CROSS JOIN F_Facility f
+                    INNER JOIN F_Operation O ON o.operation=flf.operation AND o.facility = f.facility AND o.latest_version = 'Y'
                 WHERE
                     flf.history_deleted_flag = 'N' 
                     AND flf.lot = '{lot}'
+                ORDER BY flf.exec_seq 
             '''
 
             df = pd.read_sql(query, conn)
