@@ -60,7 +60,27 @@ class PASDataEngine:
             df = pd.read_sql(query, conn)
 
         return df
-    
+
+    def extract_retArrival(self, fab_prod, ret_name):
+        
+        with PyUber.connect(datasource=self.xeus_source) as conn:
+        
+            query = f'''
+                SELECT  
+                    substr(RETICLE,1,12) as RETICLE_ID,  min(TXN_DATE) as FirstArriv 
+                FROM
+                    F32S.F_RETICLEHIST
+                WHERE RETICLE_PRODUCT in ('{ret_name}')
+                    and TRANSACTION like 'RetSSRec%' 
+                    and TXN_DATE  > current_date -360        
+                group by
+                    substr(RETICLE,1,12)
+            '''
+
+            df = pd.read_sql(query, conn)
+
+        return df
+       
     def extract_lotflow(self, lot, npi, title, fab_prod, ret_prod):
         
         with PyUber.connect(datasource=self.xeus_source) as conn:
@@ -94,6 +114,7 @@ class PASDataEngine:
                 SELECT 
                     z0.commonname AS common_name
                     ,z0.title AS title
+                    ,z0.IMOBARCODE
                     ,'{fab_prod}' AS FAB_PROD
                     ,z0.product AS RET_PROD
                     ,z0.rev AS rev
@@ -130,11 +151,16 @@ class PASDataEngine:
             '''
             df = pd.read_sql(query, conn)
 
+            df2 = self.extract_retArrival(fab_prod, ret_name)
+
+            df['RETICLE_ID'] = df['IMOBARCODE'].str[:12]
+            ret = pd.merge(df, df2, on='RETICLE_ID', how='left')
+
             # df = pd.merge(df,retProds, on='RET_PROD', how='inner')
             # cursor.execute(query)
 
         # self.reticleData = df
-        return df
+        return ret
     
     def extract_redwing(self, lot):
         with PyUber.connect(datasource= self.xeus_source) as conn:

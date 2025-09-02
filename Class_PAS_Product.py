@@ -2,6 +2,8 @@
 # from Class_PAS_Lot import Lot
 import pandas as pd
 import numpy as np
+from datetime import timedelta
+
 # from PAS_Graph_Class import PASPlot
 
 
@@ -18,6 +20,7 @@ def get_layer(row):
                     'L58','L5B','L52','L46','L4H','L4','L5', #10nm conditions
                     'L8xr','L8c','L8s','L8b','L86','L81','L8d','L8' #18A conditions
                     ] 
+
 
     for cond in cond_list:
         value = value.replace(cond,'')
@@ -109,8 +112,17 @@ class Lot:
             self.lot_flow = pd.merge(base_flow, self.lot_flow_raw, on='OPERATION', how='inner')
             self.lot_flow['OUT_DATE'] = pd.to_datetime(self.lot_flow['OUT_DATE'], errors='coerce')     
 
-            self.lot_flow = self.lot_flow.sort_values(by='OUT_DATE')
+            self.lot_flow['TREND_DATE'] = self.lot_flow['OUT_DATE'].copy()
+
+            for i in range(len(self.lot_flow)):
+                if pd.isna(self.lot_flow.loc[i,'OUT_DATE']) and i>0:
+                    previous_trend_date = self.lot_flow.loc[self.lot_flow.index[i-1], 'TREND_DATE']
+                    ct_hours = self.lot_flow.loc[self.lot_flow.index[i], 'CT']
+                    self.lot_flow.loc[self.lot_flow.index[i], 'TREND_DATE'] = previous_trend_date + timedelta(hours=ct_hours)
+                    
+            # self.lot_flow = self.lot_flow.sort_values(by='OUT_DATE')
             self.lot_flow = self.lot_flow.drop_duplicates(subset=['LAYER'], keep='last')
+            self.TREND_DATE = self.lot_flow['TREND_DATE'].max()
             # self.generate_plot_data()
         except Exception as e:
             print(f"Error extracting data for lot {self.lot_number}: {e}")
@@ -192,6 +204,7 @@ class Product:
         self.reticle_data = self.dataengine.extract_reticleData(self.fab_name, self.ret_name)
         if self.debug_flag: self.reticle_data.to_csv(f"debug/{self.fab_name}_reticle_data_raw.csv", index=False)
         self.RetData = self.reticle_manipulation()
+
         
         if self.debug_flag: self.RetData.to_csv(f"debug/{self.fab_name}_reticle_data.csv", index=False)
 
@@ -204,12 +217,19 @@ class Product:
 
     def add_lot(self, lot_number, lot_title):
 
+        first_lot = False
+
         if len(self.lots) == 0:
+
+            first_lot = True
                 # def extract_BaseFlow(self, lot, npi, fab_prod, ret_prod,process=1278):
             df = self.dataengine.extract_BaseFlow(lot=lot_number, npi=self.npi_name, fab_prod=self.fab_name, ret_prod=self.ret_name, process=self.technology)
 
             self.plan_flow = self.baseline_flow(df)
-            self.base_flow = self.plan_flow[['ORDER','OPERATION','LAYER']]
+            self.plan_flow['CT'] = self.plan_flow['CT_for_commit'].diff()
+            
+            self.base_flow = self.plan_flow[['ORDER','OPERATION','LAYER','CT']]
+            
             # self.RetPlotData = self.RetDataOrder()
             self.RetPlotData = pd.merge(self.base_flow[['ORDER','LAYER']], self.RetData, how='left', on=['LAYER'])
 
@@ -299,10 +319,12 @@ class Product:
         # Get the lowest date in the IMO_COMMIT column for each layer
         RetData = RetData.sort_values(by='IMO_COMMIT').drop_duplicates(subset=['LAYER'], keep='first')
 
+        RetData['FAB_RECEIVED'] = RetData['FIRSTARRIV']
+
         # Filter out rows where SHIP is not the earliest for the same LAYER
         # RetData = RetData[~((RetData['SHIPDATE'].isna()) & (RetData['IMO_COMMIT'] < pd.Timestamp.now()))]
 
-        RetData = pd.pivot_table(RetData,index=['LAYER'], values=['TAPEIN_TREND','ITO_TREND','FAB_REQUIREDDATE','IMO_TREND','SHIPDATE'], aggfunc=np.min).reset_index()
+        RetData = pd.pivot_table(RetData,index=['LAYER'], values=['TAPEIN_TREND','ITO_TREND','FAB_REQUIREDDATE','IMO_TREND','SHIPDATE','FAB_RECEIVED'], aggfunc=np.min).reset_index()
         RetData['TI'] = RetData['TAPEIN_TREND']
         RetData['TO'] = RetData['ITO_TREND']# - RetData['TI']
         RetData['SHIP'] = RetData['SHIPDATE']# - RetData['TI']
@@ -310,10 +332,13 @@ class Product:
         RetData['FRD'] = RetData['FAB_REQUIREDDATE']# - RetData['TI']
 
         RetData.loc[RetData['SHIP'].notna(), 'ESD'] = pd.NaT
+        RetData.loc[RetData['FAB_RECEIVED'].notna(), 'ESD'] = pd.NaT
+        RetData.loc[RetData['FAB_RECEIVED'].notna(), 'SHIP'] = pd.NaT
+
 
         #RetData['SHIP'] = RetData['SHIP'].fillna(pd.Timedelta(days=0))
         #RetData['ESD'] = RetData['ESD'].fillna(pd.Timedelta(days=0))
-        RetData = RetData[['LAYER', 'TI', 'TO', 'ESD', 'SHIP', 'FRD']]   
+        RetData = RetData[['LAYER', 'TI', 'TO', 'ESD', 'SHIP', 'FAB_RECEIVED','FRD']]   
 
         return RetData     
     
@@ -347,7 +372,7 @@ class Product:
 
         df['PLAN'] = start_date + pd.to_timedelta(df['CT_for_commit'], unit='h')
 
-        df = df[['ORDER','OPERATION','LAYER','PLAN']]
+        df = df[['ORDER','OPERATION','LAYER','PLAN','CT_for_commit']]
 
         return df
 
@@ -362,6 +387,10 @@ class Product:
         for lot in self.lots:
             lot_plot_data = lot.lot_flow
             lot_title = lot.lot_title
+            if lot_title.upper() == 'LEAD LOT':
+                lot_plot_data['Lead Lot TREND'] = lot_plot_data['TREND_DATE']
+                plotdata = pd.merge(plotdata, lot_plot_data[['ORDER', 'Lead Lot TREND']], on='ORDER', how='left')
+
             lot_plot_data[f'{lot_title} ACTUAL'] = lot_plot_data['OUT_DATE']
 
             plotdata = pd.merge(plotdata, lot_plot_data[['ORDER', f'{lot_title} ACTUAL']], on='ORDER', how='left')
@@ -400,7 +429,7 @@ class Product:
         # print(f"ymax_date: {ymax_date}")
         # print(f'ymax_val: {ymax_val}')
 
-        bar_columns = ['TI', 'TO', 'ESD', 'SHIP', 'FRD']    
+        bar_columns = ['TI', 'TO', 'ESD', 'SHIP', 'FAB_RECEIVED', 'FRD']    
         plotdata['TI'] = (plotdata['TI'] - ymin_date).dt.days
 
         plotdata['TI'] = plotdata['TI'].fillna(0)
@@ -410,6 +439,7 @@ class Product:
         plotdata['FRD'] = (plotdata['FRD'] - ymin_date).dt.days
         plotdata['ESD'] = (plotdata['ESD'] - ymin_date).dt.days  - plotdata['TI']
         plotdata['SHIP'] = (plotdata['SHIP'] - ymin_date).dt.days - plotdata['TI']
+        plotdata['FAB_RECEIVED'] = (plotdata['FAB_RECEIVED'] - ymin_date).dt.days - plotdata['TI']
 
         for col in bar_columns:
             plotdata[col] = plotdata[col].fillna(0)

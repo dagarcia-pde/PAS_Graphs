@@ -10,7 +10,7 @@ class PASPlot:
         self.npi_name = prod.npi_name
         self.output_dir = output_dir
         self.trend_colors = ["#1E2EB8", "#FF5662", "#00C7FD", "#00377C", "#A0EBFF", "#9C3EF9"]
-        self.bar_colors = ['#001E50',"#1E2EB8", '#FF5662', '#00C7FD', '#A0EBFF']
+        self.bar_colors = ['#001E50',"#1E2EB8", '#FF5662', '#00C7FD', "#02B108"]
     
         self.plotdata = prod.plot_data
         self.ymin_date = prod.ymin_date
@@ -49,7 +49,7 @@ class PASPlot:
         ymin_val = self.ymin_val
         ymax_val = self.ymax_val
         commit_date = self.commit_date
-        trend_date = plotdata['PLAN'].max() 
+        trend_date = plotdata['Lead Lot TREND'].max() 
         
         # print(f"commit_date: {commit_date}")
         # print(f"trend_date: {trend_date}")       
@@ -66,7 +66,7 @@ class PASPlot:
         
         ax2 = ax1.twinx()
 
-        bar_columns = ['TI', 'TO', 'ESD', 'SHIP']
+        bar_columns = ['TI', 'TO', 'ESD', 'SHIP','FAB_RECEIVED']
 
         # TrendLineColor = "#09FF00FF"
         TrendLineColor = "#FF0011"
