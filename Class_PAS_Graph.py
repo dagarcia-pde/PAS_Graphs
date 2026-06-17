@@ -5,10 +5,11 @@ import re
 import os
 
 class PASPlot:
-    def __init__(self,prod,output_dir):
+    def __init__(self,prod,output_dir,fussion_dir):
     
         self.npi_name = prod.npi_name
         self.output_dir = output_dir
+        self.fussion_dir = fussion_dir
         self.trend_colors = ["#1E2EB8", "#FF5662", "#00C7FD", "#00377C", "#A0EBFF", "#9C3EF9"]
         self.bar_colors = ['#001E50',"#1E2EB8", '#FF5662', '#00C7FD', "#02B108"]
     
@@ -125,7 +126,9 @@ class PASPlot:
         
         # Combine them into a full file path
         full_path = os.path.join(self.output_dir, filename)        
+        fussion_path = os.path.join(self.fussion_dir, filename)        
         
         fig.savefig(full_path)
+        fig.savefig(fussion_path)
         
         plt.close(fig)

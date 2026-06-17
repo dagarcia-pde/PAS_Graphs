@@ -1,5 +1,6 @@
 
 # from Class_PAS_Lot import Lot
+import os
 import pandas as pd
 import numpy as np
 from datetime import timedelta
@@ -204,6 +205,9 @@ class Product:
         
         self.dataengine = dataengine
         self.debug_flag = debug_flag
+
+        if self.debug_flag:
+            os.makedirs("debug", exist_ok=True)
 
         temp = None
         if ret_version is not None:

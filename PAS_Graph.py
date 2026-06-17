@@ -38,6 +38,7 @@ pd.options.mode.chained_assignment = None
 
 # plotPaths = "plots/"
 plotPaths = r'\\shuser-Prod.intel.com\shProduser$\dagarcia\PAS_GRAPH\Plots'
+fussionPath = r'\\azshfs.intel.com\AZAnalysis$\1278_MAODATA\MDCE\Customer Engineering\NPI_PAS\Fusion'
 
 key_file = r'\\shuser-Prod.intel.com\shProduser$\dagarcia\keys\secret.key'
 credential_file = r'\\shuser-Prod.intel.com\shProduser$\dagarcia\EncryptedCredentials\credentials.encrypted'
@@ -78,7 +79,7 @@ def read_excel_to_dataframe(file_path, sheet_name, debug=False,halt_on_error=Tru
 def main(debug_flag=False):
 
     # Entry point for the script
-    if os.path.exists(plotPaths):
+    if os.path.exists(plotPaths):   
         for filename in os.listdir(plotPaths):
             file_path = os.path.join(plotPaths, filename)
             try:
@@ -91,6 +92,8 @@ def main(debug_flag=False):
     else:
         os.makedirs(plotPaths)
 
+    if not os.path.exists(fussionPath):
+        os.makedirs(fussionPath)
 
     pas_config = read_excel_to_dataframe(config_file, 'PlotConfig', debug=debug_flag, halt_on_error=True)
     email_config = read_excel_to_dataframe(config_file, 'EmailConfig', debug=debug_flag, halt_on_error=True)
@@ -156,8 +159,8 @@ def main(debug_flag=False):
                 prod.add_lot(row['LOT'], row['TITLE'])
                 
             prod.build_plot_data()
-            
-            myGraph = Class_PAS_Graph.PASPlot(prod,plotPaths)
+    
+            myGraph = Class_PAS_Graph.PASPlot(prod = prod, output_dir=plotPaths, fussion_dir=fussionPath)
             myGraph.make_plot()        
             
             email.addProduct(product, prod.plot_data)
